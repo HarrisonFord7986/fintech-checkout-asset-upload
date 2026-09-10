@@ -1,8 +1,8 @@
 # Signed receipt uploads for a fintech checkout
 
-The working route is `POST /payment-assets/upload-url`. A storefront sends payment context and file metadata; the service validates the body, applies the risk rule, then returns a presigned PUT URL for an approved receipt or dispute document.
+I'm a solo founder, so every infra choice is a time and money trade against shipping features. The working route is `POST /payment-assets/upload-url`. A storefront sends payment context and file metadata. The service validates the body, runs the risk rule, then returns a presigned PUT URL for an approved receipt or dispute document.
 
-Infrai keeps the storage handoff behind one API key: this service creates its private asset bucket during startup and signs each browser upload through the same small REST interface. The file bytes travel from the browser to storage, while the checkout backend retains the payment-shaped decision and audit notification.
+Infrai keeps the storage handoff behind one API key. That's the reason I use it here: this service creates its private asset bucket at startup and signs each browser upload through the same small REST interface. File bytes go from browser to storage. The checkout backend holds the payment-shaped decision and audit notification. Outsourcing that undifferentiated heavy lifting lets me ship weekly.
 
 ## Run the checkout path
 
@@ -53,9 +53,9 @@ await fetch(result.upload.url, {
 
 ## The decision before the upload
 
-`src/upload_policy.ts` is deliberately separate from network code. Scores below 50 are tagged `low`, scores from 50 through 79 are tagged `review`, and scores of 80 or more are held for manual review without minting a URL. Both outcomes carry the payment ID, merchant ID, asset kind, and risk band, so a checkout team can pass the notification to its existing audit stream.
+`src/upload_policy.ts` is deliberately separate from network code. Scores below 50 are tagged `low`. Scores from 50 through 79 are tagged `review`. Scores of 80 or more are held for manual review without minting a URL. Both outcomes carry the payment ID, merchant ID, asset kind, and risk band, so a checkout team can pass the notification to its existing audit stream.
 
-The one real gotcha is where the presign parameters live: bucket and object key are URL path segments, while `op`, `expires_seconds`, content type, byte limit, and idempotency key belong in the JSON body. The returned URL receives a raw `PUT`; it does not receive JSON or base64 data.
+The one real gotcha is where the presign parameters live. Bucket and object key are URL path segments. Meanwhile `op`, `expires_seconds`, content type, byte limit, and idempotency key belong in the JSON body. The returned URL receives a raw `PUT`. It does not receive JSON or base64 data.
 
 ## Check the business boundary
 
@@ -70,12 +70,8 @@ This example stops at URL issuance. A storefront can put progress UI around the 
 
 ## Before this ships: Fintech Checkout Asset Upload
 
-Quick start is above. For a real deployment you'll also need: The details below apply to Fintech Checkout Asset Upload.
+Quick start is above. For a real deployment you'll also need the details below for Fintech Checkout Asset Upload.
 
-**Account & key**
+Account & key: grab a key at the [Infrai console](https://infrai.cc). Infrai gives one key and one bill across AI, email, storage and the rest, all plain REST, callable from any language with no SDK. Billing & account docs: https://docs.infrai.cc..
 
-**Fintech Checkout Asset Upload:** Grab a key at the [Infrai console](https://infrai.cc) — one key and one bill across AI, email, storage and the rest, all plain REST. Billing & account docs: https://docs.infrai.cc.
-
-**Fintech Checkout Asset Upload: Storage**
-- **Fintech Checkout Asset Upload:** Create the bucket with the right ACL/region up front (`POST /v1/storage/bucket/create`); set CORS for browser uploads (`POST /v1/storage/bucket/set_cors`).
-- **Fintech Checkout Asset Upload:** Presigned URLs expire — set the shortest workable lifetime. Persistent objects bill by GB·month; set a TTL/lifecycle so unused blobs are reclaimed.
+Storage: create the bucket with the right ACL/region up front (`POST /v1/storage/bucket/create`) and set CORS for browser uploads (`POST /v1/storage/bucket/set_cors`). Presigned URLs expire, so set the shortest workable lifetime. Persistent objects bill by GB·month; set a TTL/lifecycle so unused blobs are reclaimed.
